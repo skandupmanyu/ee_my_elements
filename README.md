@@ -9,6 +9,7 @@ A Python application that takes a PowerPoint file as input and converts each sli
 - ✅ Preserves slide content and formatting
 - ✅ **NEW:** Generates high-quality PNG thumbnail images (120px height)
 - ✅ Generates XML metadata file (`MyElements.xml`) with slide information
+- ✅ **NEW:** Creates timestamped zip archive with all generated files
 - ✅ Reproducible group UUIDs based on group names
 - ✅ Automatic slide title extraction for meaningful element names
 - ✅ Command-line interface for easy usage
@@ -126,6 +127,7 @@ Created files:
   • b2c3d4e5-f6g7-8901-bcde-f23456789012.pptx
   • b2c3d4e5-f6g7-8901-bcde-f23456789012.png
   • MyElements.xml
+  • presentation_20240829_143022.zip
 ```
 
 ### Specify a custom output directory:
@@ -154,6 +156,23 @@ For each slide, a high-quality PNG thumbnail is generated with the same UUID:
 - **Pixel-perfect rendering** of slide content
 - **All visual elements preserved** (colors, layouts, shapes, styling)
 - **High quality PNG format** with 95% quality
+
+### Zip Archive (NEW!)
+A timestamped zip archive is automatically created containing all generated files:
+- `presentation_YYYYMMDD_HHMMSS.zip` (e.g., `my_presentation_20240829_143022.zip`)
+
+**Archive Contents:**
+- **All individual PPTX files** (slide files)
+- **All PNG thumbnails** (one per slide)
+- **XML metadata file** (`MyElements.xml`)
+- **No system files** (excludes .DS_Store, Thumbs.db, etc.)
+- **Root-level structure** (no nested folders inside zip)
+
+**Benefits:**
+- **Easy distribution** - single file contains everything
+- **Clean packaging** - only essential files included
+- **Timestamped naming** - prevents conflicts and enables versioning
+- **Compressed storage** - reduced file size for sharing
 
 ### XML Metadata File
 A `MyElements.xml` file is automatically generated with the following structure:
@@ -222,6 +241,13 @@ The application uses efficient libraries for fast processing:
 1. Extract slide titles using text analysis
 2. Generate reproducible UUIDs for groups using UUID5
 3. Create structured XML with slide information
+
+**Zip Archive Creation:**
+1. **Automatic compression** of all generated files
+2. **Timestamp-based naming** using input filename + YYYYMMDD_HHMMSS format
+3. **Selective inclusion** - only PPTX, PNG, and XML files
+4. **Root-level structure** - files added directly to zip root
+5. **Optimal compression** using ZIP_DEFLATED with compression level 6
 
 ### Quality Benefits:
 - **Pixel-perfect thumbnails** that accurately represent slide content

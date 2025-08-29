@@ -15,6 +15,8 @@ import uuid
 import time
 import subprocess
 import tempfile
+import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
 import xml.etree.ElementTree as ET
@@ -313,11 +315,17 @@ class PowerPointSplitter:
             print(f"\n📄 Generating XML metadata...")
             self._create_xml_metadata(slide_metadata)
             
+            # Create zip archive with all generated files
+            print(f"\n📦 Creating zip archive...")
+            zip_path = self._create_zip_archive()
+            
             total_time = time.time() - start_time
             print(f"\n🎉 Processing complete!")
             print(f"⏱️  Total time: {total_time:.1f}s ({total_time/total_slides:.1f}s per slide)")
             print(f"🚀 Performance: {total_slides/total_time:.1f} slides/second")
             print(f"📈 High-quality thumbnails with accurate visual representation!")
+            if zip_path:
+                print(f"📦 Archive created: {Path(zip_path).name}")
             
             return created_files
             
@@ -498,6 +506,59 @@ class PowerPointSplitter:
             
         except Exception as e:
             print(f"Error creating thumbnail: {e}")
+            return None
+    
+    def _create_zip_archive(self) -> str:
+        """
+        Create a zip archive containing all generated files (PPTX, PNG, XML only).
+        
+        Returns:
+            str: Path to the created zip file
+        """
+        try:
+            # Generate timestamp for unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+            # Create zip filename based on input file name + timestamp
+            base_name = self.input_file.stem  # Filename without extension
+            zip_filename = f"{base_name}_{timestamp}.zip"
+            zip_path = self.output_dir / zip_filename
+            
+            # Get all generated files to include in zip
+            files_to_zip = []
+            
+            # Add all PPTX files (individual slides)
+            pptx_files = list(self.output_dir.glob("*.pptx"))
+            files_to_zip.extend(pptx_files)
+            
+            # Add all PNG files (thumbnails) 
+            png_files = list(self.output_dir.glob("*.png"))
+            files_to_zip.extend(png_files)
+            
+            # Add XML metadata file
+            xml_file = self.output_dir / "MyElements.xml"
+            if xml_file.exists():
+                files_to_zip.append(xml_file)
+            
+            # Create zip archive
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
+                for file_path in files_to_zip:
+                    # Add file at root level of zip (no nested folders)
+                    # Use only the filename, not the full path
+                    zipf.write(file_path, file_path.name)
+            
+            # Verify zip contents
+            file_count = len(files_to_zip)
+            zip_size = zip_path.stat().st_size / (1024 * 1024)  # Size in MB
+            
+            print(f"    ✅ Compressed {file_count} files")
+            print(f"    📦 Archive size: {zip_size:.1f} MB")
+            print(f"    📁 Saved as: {zip_filename}")
+            
+            return str(zip_path)
+            
+        except Exception as e:
+            print(f"    ❌ Error creating zip archive: {e}")
             return None
 
 
