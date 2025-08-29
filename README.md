@@ -9,7 +9,7 @@ A Python application that takes a PowerPoint file as input and converts each sli
 - ✅ Preserves slide content and formatting
 - ✅ **NEW:** Generates high-quality PNG thumbnail images (120px height)
 - ✅ Generates XML metadata file (`MyElements.xml`) with slide information
-- ✅ **NEW:** Creates timestamped zip archive with all generated files
+- ✅ **NEW:** Creates clean timestamped zip archive and auto-cleanup
 - ✅ Reproducible group UUIDs based on group names
 - ✅ Automatic slide title extraction for meaningful element names
 - ✅ Command-line interface for easy usage
@@ -118,16 +118,20 @@ Processing slide 2/5
    Group: PodHandler (ID: 7bbf14b3-a82a-568c-a3ef-ab5ad0171dbe)
    Elements: 5
 
-✅ Successfully created 5 individual slide files
-📁 Output directory: split_slides/
+📦 Creating zip archive...
+    ✅ Compressed 11 files
+    📦 Archive size: 12.3 MB
+    📁 Saved to: /path/to/presentation_20240829_143022.zip
 
-Created files:
-  • a1b2c3d4-e5f6-7890-abcd-ef1234567890.pptx
-  • a1b2c3d4-e5f6-7890-abcd-ef1234567890.png
-  • b2c3d4e5-f6g7-8901-bcde-f23456789012.pptx
-  • b2c3d4e5-f6g7-8901-bcde-f23456789012.png
-  • MyElements.xml
-  • presentation_20240829_143022.zip
+🧹 Cleaning up generated files...
+    ✅ Removed 11 generated files
+    🗑️  Removed empty directory: split_slides
+    📦 Final output: presentation_20240829_143022.zip
+
+🎉 Processing complete!
+⏱️  Total time: 15.6s (3.1s per slide)
+🚀 Performance: 0.3 slides/second
+📈 High-quality thumbnails with accurate visual representation!
 ```
 
 ### Specify a custom output directory:
@@ -157,22 +161,35 @@ For each slide, a high-quality PNG thumbnail is generated with the same UUID:
 - **All visual elements preserved** (colors, layouts, shapes, styling)
 - **High quality PNG format** with 95% quality
 
-### Zip Archive (NEW!)
-A timestamped zip archive is automatically created containing all generated files:
-- `presentation_YYYYMMDD_HHMMSS.zip` (e.g., `my_presentation_20240829_143022.zip`)
+### Final Output: Clean Zip Archive (NEW!)
+**Location:** Placed next to your original PowerPoint file  
+**Filename:** `your_presentation_YYYYMMDD_HHMMSS.zip`
 
-**Archive Contents:**
+**Example:**
+```
+/Users/you/Documents/
+├── my_presentation.pptx          ← Your original file
+└── my_presentation_20240829_143022.zip  ← Generated archive
+```
+
+**Archive Contents (Root Level):**
 - **All individual PPTX files** (slide files)
 - **All PNG thumbnails** (one per slide)
 - **XML metadata file** (`MyElements.xml`)
 - **No system files** (excludes .DS_Store, Thumbs.db, etc.)
 - **Root-level structure** (no nested folders inside zip)
 
+**Automatic Cleanup:**
+- ✅ **Temporary files removed** - No clutter left behind
+- ✅ **Single output file** - Just one clean zip archive
+- ✅ **Optimal location** - Zip placed next to original file
+
 **Benefits:**
-- **Easy distribution** - single file contains everything
-- **Clean packaging** - only essential files included
-- **Timestamped naming** - prevents conflicts and enables versioning
-- **Compressed storage** - reduced file size for sharing
+- **🎯 Single file output** - Easy to share and manage
+- **🧹 Clean workspace** - No scattered temporary files
+- **📦 Professional packaging** - All content organized in one archive
+- **⚡ Fast access** - Zip placed conveniently next to source file
+- **💾 Efficient storage** - Compressed for optimal file size
 
 ### XML Metadata File
 A `MyElements.xml` file is automatically generated with the following structure:
@@ -242,12 +259,15 @@ The application uses efficient libraries for fast processing:
 2. Generate reproducible UUIDs for groups using UUID5
 3. Create structured XML with slide information
 
-**Zip Archive Creation:**
+**Zip Archive Creation & Cleanup:**
 1. **Automatic compression** of all generated files
 2. **Timestamp-based naming** using input filename + YYYYMMDD_HHMMSS format
-3. **Selective inclusion** - only PPTX, PNG, and XML files
-4. **Root-level structure** - files added directly to zip root
-5. **Optimal compression** using ZIP_DEFLATED with compression level 6
+3. **Strategic placement** - zip saved next to original PowerPoint file
+4. **Selective inclusion** - only PPTX, PNG, and XML files
+5. **Root-level structure** - files added directly to zip root
+6. **Optimal compression** using ZIP_DEFLATED with compression level 6
+7. **Automatic cleanup** - removes all temporary files after archiving
+8. **Directory cleanup** - removes empty working directories
 
 ### Quality Benefits:
 - **Pixel-perfect thumbnails** that accurately represent slide content

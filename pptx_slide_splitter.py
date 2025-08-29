@@ -16,6 +16,7 @@ import time
 import subprocess
 import tempfile
 import zipfile
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -324,8 +325,6 @@ class PowerPointSplitter:
             print(f"⏱️  Total time: {total_time:.1f}s ({total_time/total_slides:.1f}s per slide)")
             print(f"🚀 Performance: {total_slides/total_time:.1f} slides/second")
             print(f"📈 High-quality thumbnails with accurate visual representation!")
-            if zip_path:
-                print(f"📦 Archive created: {Path(zip_path).name}")
             
             return created_files
             
@@ -510,7 +509,8 @@ class PowerPointSplitter:
     
     def _create_zip_archive(self) -> str:
         """
-        Create a zip archive containing all generated files (PPTX, PNG, XML only).
+        Create a zip archive containing all generated files, then clean up.
+        Places zip file at the same level as the input PowerPoint file.
         
         Returns:
             str: Path to the created zip file
@@ -522,7 +522,9 @@ class PowerPointSplitter:
             # Create zip filename based on input file name + timestamp
             base_name = self.input_file.stem  # Filename without extension
             zip_filename = f"{base_name}_{timestamp}.zip"
-            zip_path = self.output_dir / zip_filename
+            
+            # Place zip file at the same level as the input file (not in output dir)
+            zip_path = self.input_file.parent / zip_filename
             
             # Get all generated files to include in zip
             files_to_zip = []
@@ -540,6 +542,10 @@ class PowerPointSplitter:
             if xml_file.exists():
                 files_to_zip.append(xml_file)
             
+            if not files_to_zip:
+                print(f"    ⚠️  No files found to archive")
+                return None
+            
             # Create zip archive
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
                 for file_path in files_to_zip:
@@ -553,13 +559,57 @@ class PowerPointSplitter:
             
             print(f"    ✅ Compressed {file_count} files")
             print(f"    📦 Archive size: {zip_size:.1f} MB")
-            print(f"    📁 Saved as: {zip_filename}")
+            print(f"    📁 Saved to: {zip_path}")
+            
+            # Clean up generated files now that they're archived
+            print(f"\n🧹 Cleaning up generated files...")
+            cleanup_count = self._cleanup_generated_files()
+            print(f"    ✅ Removed {cleanup_count} generated files")
+            print(f"    📦 Final output: {zip_filename}")
             
             return str(zip_path)
             
         except Exception as e:
             print(f"    ❌ Error creating zip archive: {e}")
             return None
+    
+    def _cleanup_generated_files(self) -> int:
+        """
+        Remove all generated files (PPTX, PNG, XML) and optionally the output directory.
+        
+        Returns:
+            int: Number of files removed
+        """
+        removed_count = 0
+        
+        try:
+            # Remove all generated files
+            file_patterns = ["*.pptx", "*.png", "*.xml"]
+            
+            for pattern in file_patterns:
+                files_to_remove = list(self.output_dir.glob(pattern))
+                for file_path in files_to_remove:
+                    try:
+                        file_path.unlink()
+                        removed_count += 1
+                    except Exception as e:
+                        print(f"    ⚠️  Could not remove {file_path.name}: {e}")
+            
+            # Check if output directory is empty and remove it if so
+            try:
+                remaining_files = list(self.output_dir.iterdir())
+                if not remaining_files:
+                    self.output_dir.rmdir()
+                    print(f"    🗑️  Removed empty directory: {self.output_dir.name}")
+                else:
+                    print(f"    ℹ️  Kept directory (contains {len(remaining_files)} other files)")
+            except Exception as e:
+                print(f"    ℹ️  Directory cleanup skipped: {e}")
+                
+        except Exception as e:
+            print(f"    ⚠️  Error during cleanup: {e}")
+        
+        return removed_count
 
 
 def main():
