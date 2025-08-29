@@ -243,13 +243,13 @@ class PowerPointSplitter:
         
         Args:
             input_file (str): Path to the input PowerPoint file
-            output_dir (str): Directory to save the individual slide files
+            output_dir (str): Directory to save the individual slide files (optional, uses temp dir if not provided)
             group_name (str): Name of the group for XML metadata
         """
         self.input_file = Path(input_file)
-        self.output_dir = Path(output_dir) if output_dir else self.input_file.parent / "split_slides"
         self.group_name = group_name or "Default Group"
         self.thumbnail_generator = SlideThumbnailGenerator()
+        self.temp_dir_created = False
         
         # Validate input file
         if not self.input_file.exists():
@@ -258,8 +258,15 @@ class PowerPointSplitter:
         if not self.input_file.suffix.lower() in ['.pptx', '.ppt']:
             raise ValueError("Input file must be a PowerPoint file (.pptx or .ppt)")
         
-        # Create output directory if it doesn't exist
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        # Use provided output_dir or create a temporary directory
+        if output_dir:
+            self.output_dir = Path(output_dir)
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            # Create a temporary directory for intermediate files
+            self.output_dir = Path(tempfile.mkdtemp(prefix="pptx_split_"))
+            self.temp_dir_created = True
+            print(f"📁 Using temporary directory: {self.output_dir.name}")
     
     def split_slides(self) -> List[str]:
         """
@@ -330,6 +337,12 @@ class PowerPointSplitter:
             
         except Exception as e:
             print(f"❌ Error processing presentation: {e}")
+            # Clean up temp directory if we created it and there was an error
+            if hasattr(self, 'temp_dir_created') and self.temp_dir_created:
+                try:
+                    shutil.rmtree(self.output_dir, ignore_errors=True)
+                except:
+                    pass
             raise
     
     def _create_single_slide_presentation(self, source_presentation, target_slide, slide_index):
@@ -575,7 +588,7 @@ class PowerPointSplitter:
     
     def _cleanup_generated_files(self) -> int:
         """
-        Remove all generated files (PPTX, PNG, XML) and optionally the output directory.
+        Remove all generated files (PPTX, PNG, XML) and the temporary directory.
         
         Returns:
             int: Number of files removed
@@ -595,14 +608,30 @@ class PowerPointSplitter:
                     except Exception as e:
                         print(f"    ⚠️  Could not remove {file_path.name}: {e}")
             
-            # Check if output directory is empty and remove it if so
+            # Remove the directory
             try:
-                remaining_files = list(self.output_dir.iterdir())
-                if not remaining_files:
+                if self.temp_dir_created:
+                    # For temp directories, always remove them
+                    remaining_files = list(self.output_dir.iterdir())
+                    if remaining_files:
+                        # Clean up any remaining files
+                        for file_path in remaining_files:
+                            try:
+                                file_path.unlink()
+                            except:
+                                pass
+                    
                     self.output_dir.rmdir()
-                    print(f"    🗑️  Removed empty directory: {self.output_dir.name}")
+                    print(f"    🗑️  Removed temporary directory: {self.output_dir.name}")
                 else:
-                    print(f"    ℹ️  Kept directory (contains {len(remaining_files)} other files)")
+                    # For user-specified directories, only remove if empty
+                    remaining_files = list(self.output_dir.iterdir())
+                    if not remaining_files:
+                        self.output_dir.rmdir()
+                        print(f"    🗑️  Removed empty directory: {self.output_dir.name}")
+                    else:
+                        print(f"    ℹ️  Kept directory (contains {len(remaining_files)} other files)")
+                        
             except Exception as e:
                 print(f"    ℹ️  Directory cleanup skipped: {e}")
                 
@@ -633,7 +662,7 @@ Examples:
     
     parser.add_argument(
         "-o", "--output-dir",
-        help="Directory to save the individual slide files (default: ./split_slides/)",
+        help="Directory to save the individual slide files (default: temporary directory)",
         default=None
     )
     

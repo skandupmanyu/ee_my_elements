@@ -70,7 +70,7 @@ Then run the splitter:
 python pptx_slide_splitter.py presentation.pptx
 ```
 
-This will create individual slide files in a `split_slides/` directory in the same location as your input file.
+This will process the slides using a temporary directory and create a clean zip archive next to your input file.
 
 ### Specify Output Directory
 
@@ -125,7 +125,7 @@ Processing slide 2/5
 
 🧹 Cleaning up generated files...
     ✅ Removed 11 generated files
-    🗑️  Removed empty directory: split_slides
+    🗑️  Removed temporary directory: pptx_split_abc123
     📦 Final output: presentation_20240829_143022.zip
 
 🎉 Processing complete!
@@ -260,14 +260,15 @@ The application uses efficient libraries for fast processing:
 3. Create structured XML with slide information
 
 **Zip Archive Creation & Cleanup:**
-1. **Automatic compression** of all generated files
-2. **Timestamp-based naming** using input filename + YYYYMMDD_HHMMSS format
-3. **Strategic placement** - zip saved next to original PowerPoint file
-4. **Selective inclusion** - only PPTX, PNG, and XML files
-5. **Root-level structure** - files added directly to zip root
-6. **Optimal compression** using ZIP_DEFLATED with compression level 6
-7. **Automatic cleanup** - removes all temporary files after archiving
-8. **Directory cleanup** - removes empty working directories
+1. **Temporary directory** - uses system temp directory for intermediate files
+2. **Automatic compression** of all generated files
+3. **Timestamp-based naming** using input filename + YYYYMMDD_HHMMSS format
+4. **Strategic placement** - zip saved next to original PowerPoint file
+5. **Selective inclusion** - only PPTX, PNG, and XML files
+6. **Root-level structure** - files added directly to zip root
+7. **Optimal compression** using ZIP_DEFLATED with compression level 6
+8. **Automatic cleanup** - removes all temporary files and directories after archiving
+9. **Clean workspace** - no intermediate files left behind
 
 ### Quality Benefits:
 - **Pixel-perfect thumbnails** that accurately represent slide content
