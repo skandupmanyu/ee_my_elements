@@ -237,7 +237,7 @@ class SlideThumbnailGenerator:
 class PowerPointSplitter:
     """Class to handle splitting PowerPoint presentations into individual slides."""
     
-    def __init__(self, input_file: str, output_dir: str = None, group_name: str = None):
+    def __init__(self, input_file: str, output_dir: str = None, group_name: str = None, base_name: str = None):
         """
         Initialize the PowerPoint splitter.
         
@@ -245,9 +245,11 @@ class PowerPointSplitter:
             input_file (str): Path to the input PowerPoint file
             output_dir (str): Directory to save the individual slide files (optional, uses temp dir if not provided)
             group_name (str): Name of the group for XML metadata
+            base_name (str): Base name for the output zip file (optional, uses input filename if not provided)
         """
         self.input_file = Path(input_file)
         self.group_name = group_name or "Default Group"
+        self.base_name = base_name or self.input_file.stem
         self.thumbnail_generator = SlideThumbnailGenerator()
         self.temp_dir_created = False
         
@@ -268,9 +270,13 @@ class PowerPointSplitter:
             self.temp_dir_created = True
             print(f"📁 Using temporary directory: {self.output_dir.name}")
     
-    def split_slides(self) -> List[str]:
+    def split_slides(self, progress_callback=None) -> List[str]:
         """
         Split the PowerPoint presentation into individual slide files and create XML metadata.
+        
+        Args:
+            progress_callback: Optional callback function to report progress.
+                             Called with (current_slide, total_slides, slide_title, status)
         
         Returns:
             List[str]: List of created file paths
@@ -292,6 +298,13 @@ class PowerPointSplitter:
             for i, slide in enumerate(presentation.slides, 1):
                 print(f"Processing slide {i}/{total_slides}...", end=" ")
                 
+                # Extract slide name/title first
+                slide_name = self._extract_slide_name(slide, i)
+                
+                # Report progress - starting slide processing
+                if progress_callback:
+                    progress_callback(i, total_slides, slide_name, "creating_pptx")
+                
                 # Create a new presentation that will contain only this slide
                 new_presentation = self._create_single_slide_presentation(presentation, slide, i-1)
                 
@@ -299,16 +312,21 @@ class PowerPointSplitter:
                 file_uuid = str(uuid.uuid4())
                 output_file = self.output_dir / f"{file_uuid}.pptx"
                 
-                # Extract slide name/title
-                slide_name = self._extract_slide_name(slide, i)
-                
                 # Save the new presentation
                 new_presentation.save(str(output_file))
                 created_files.append(str(output_file))
                 
+                # Report progress - starting thumbnail generation
+                if progress_callback:
+                    progress_callback(i, total_slides, slide_name, "creating_thumbnail")
+                
                 # Generate high-quality thumbnail from PPTX file
                 thumbnail_img = self.thumbnail_generator.create_high_quality_thumbnail_from_pptx(str(output_file), i)
                 thumbnail_path = self._create_composite_thumbnail_from_image(thumbnail_img, file_uuid)
+                
+                # Report progress - slide completed
+                if progress_callback:
+                    progress_callback(i, total_slides, slide_name, "completed")
                 
                 # Store slide metadata
                 slide_metadata.append({
@@ -320,12 +338,20 @@ class PowerPointSplitter:
                 print(f"✅ {output_file.name} + {Path(thumbnail_path).name}")
             
             # Generate XML metadata
+            if progress_callback:
+                progress_callback(total_slides + 1, total_slides + 2, "XML Metadata", "creating_xml")
             print(f"\n📄 Generating XML metadata...")
             self._create_xml_metadata(slide_metadata)
             
             # Create zip archive with all generated files
+            if progress_callback:
+                progress_callback(total_slides + 2, total_slides + 2, "Zip Archive", "creating_zip")
             print(f"\n📦 Creating zip archive...")
             zip_path = self._create_zip_archive()
+            
+            # Final completion
+            if progress_callback:
+                progress_callback(total_slides + 2, total_slides + 2, "Export Complete", "export_complete")
             
             total_time = time.time() - start_time
             print(f"\n🎉 Processing complete!")
@@ -532,9 +558,8 @@ class PowerPointSplitter:
             # Generate timestamp for unique filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # Create zip filename based on input file name + timestamp
-            base_name = self.input_file.stem  # Filename without extension
-            zip_filename = f"{base_name}_{timestamp}.zip"
+            # Create zip filename based on base name + timestamp
+            zip_filename = f"{self.base_name}_{timestamp}.zip"
             
             # Place zip file at the same level as the input file (not in output dir)
             zip_path = self.input_file.parent / zip_filename

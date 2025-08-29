@@ -10,9 +10,10 @@ A Python application that takes a PowerPoint file as input and converts each sli
 - ✅ **NEW:** Generates high-quality PNG thumbnail images (120px height)
 - ✅ Generates XML metadata file (`MyElements.xml`) with slide information
 - ✅ **NEW:** Creates clean timestamped zip archive and auto-cleanup
+- ✅ **NEW:** User-friendly web GUI with drag-and-drop file upload
 - ✅ Reproducible group UUIDs based on group names
 - ✅ Automatic slide title extraction for meaningful element names
-- ✅ Command-line interface for easy usage
+- ✅ Both web GUI and command-line interfaces available
 - ✅ Customizable output directory and group names
 
 ## Installation
@@ -56,7 +57,39 @@ python verify_install.py
 
 ## Usage
 
-### Basic Usage
+You can use this tool in two ways: through a user-friendly web GUI or via command line for automation and debugging.
+
+### 🖥️ Web GUI (Recommended for Most Users)
+
+**Quick Start:**
+```bash
+# First, activate your virtual environment
+source venv/bin/activate  # On macOS/Linux
+# or
+venv\Scripts\activate     # On Windows
+
+# Launch the web GUI
+python run_gui.py
+```
+
+This will launch a web interface in your browser where you can:
+- 📁 **Drag & drop** your PowerPoint file
+- 🏷️ **Enter a group name** for your slides
+- 🚀 **Click process** and get your zip file automatically
+- 📥 **Download** the result directly
+
+**GUI Features:**
+- ✅ **User-friendly interface** - No command-line knowledge needed
+- ✅ **Real-time progress** - See processing status as it happens
+- ✅ **Automatic downloads** - Get your zip file instantly
+- ✅ **Error handling** - Clear error messages if something goes wrong
+- ✅ **File validation** - Ensures your file is a valid PowerPoint presentation
+- ✅ **Mobile-friendly** - Works on tablets and mobile devices
+- ✅ **Local processing** - Files processed on your machine, not uploaded to servers
+
+### ⌨️ Command Line (For Automation & Debugging)
+
+**Basic Usage:**
 
 First, activate your virtual environment:
 ```bash
