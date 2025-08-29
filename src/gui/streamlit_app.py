@@ -1,30 +1,33 @@
-#!/usr/bin/env python3
 """
-PowerPoint Slide Splitter - Streamlit Web GUI
+Streamlit web interface for Export for My Efficient Elements.
 
-A user-friendly web interface for splitting PowerPoint presentations
-into individual slides with thumbnails and XML metadata.
-
-Author: AI Assistant
+This module provides a user-friendly web interface for processing PowerPoint
+presentations with real-time progress tracking and professional styling.
 """
 
 import streamlit as st
 import tempfile
 import os
+import base64
 from pathlib import Path
 import traceback
 
-# Import our main application
-from pptx_slide_splitter import PowerPointSplitter
-import base64
+# Import configuration and core modules
+from config.settings import get_gui_config, get_app_config, get_asset_path
+from src.core.splitter import PowerPointSplitter
+
 
 def get_base64_of_image(path):
     """Convert image to base64 string for HTML embedding."""
     with open(path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
 
+
 def process_slides_with_progress(splitter, total_slides, progress_bar, status_text, progress_detail):
     """Process slides with detailed progress updates."""
+    
+    gui_config = get_gui_config()
+    progress_colors = gui_config['progress_colors']
     
     # Create a progress callback function
     def progress_callback(current_slide, total_slides, slide_title, status):
@@ -44,7 +47,7 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
             
             # Show PPTX creation progress
             progress_detail.markdown(f"""
-            <div style="background-color: #3498DB; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            <div style="background-color: {progress_colors['creating_pptx']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>Slide {current_slide}/{total_slides}:</strong> {slide_title}<br>
             <small>📄 Creating individual PPTX file...</small>
             </div>
@@ -56,7 +59,7 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
             
             # Show thumbnail creation progress
             progress_detail.markdown(f"""
-            <div style="background-color: #F39C12; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            <div style="background-color: {progress_colors['creating_thumbnail']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>Slide {current_slide}/{total_slides}:</strong> {slide_title}<br>
             <small>🎨 Generating high-quality thumbnail (this may take a moment)...</small>
             </div>
@@ -65,7 +68,7 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
         elif status == "completed":
             # Show completion
             progress_detail.markdown(f"""
-            <div style="background-color: #27AE60; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            <div style="background-color: {progress_colors['completed']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>Slide {current_slide}/{total_slides}:</strong> {slide_title}<br>
             <small>✅ PPTX and thumbnail created successfully</small>
             </div>
@@ -76,8 +79,8 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
             status_text.text("📄 Creating XML metadata...")
             
             # Show XML creation progress
-            progress_detail.markdown("""
-            <div style="background-color: #9B59B6; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            progress_detail.markdown(f"""
+            <div style="background-color: {progress_colors['creating_xml']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>📄 XML Metadata:</strong><br>
             <small>Creating MyElements.xml with slide information...</small>
             </div>
@@ -88,8 +91,8 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
             status_text.text("📦 Creating zip archive...")
             
             # Show zip creation progress
-            progress_detail.markdown("""
-            <div style="background-color: #8B4513; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            progress_detail.markdown(f"""
+            <div style="background-color: {progress_colors['creating_zip']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>📦 Final Archive:</strong><br>
             <small>Compressing all files into downloadable zip archive...</small>
             </div>
@@ -100,8 +103,8 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
             status_text.text("✅ Export completed successfully!")
             
             # Show final completion
-            progress_detail.markdown("""
-            <div style="background-color: #27AE60; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
+            progress_detail.markdown(f"""
+            <div style="background-color: {progress_colors['export_complete']}; color: #FFFFFF; padding: 10px; border-radius: 5px; margin: 5px 0;">
             <strong>🎉 Export Complete!</strong><br>
             <small>All elements exported successfully and ready for download</small>
             </div>
@@ -113,63 +116,72 @@ def process_slides_with_progress(splitter, total_slides, progress_bar, status_te
     
     return created_files
 
+
 def main():
+    """Main Streamlit application."""
+    
+    # Load configurations
+    gui_config = get_gui_config()
+    app_config = get_app_config()
+    
     # Configure page
     st.set_page_config(
-        page_title="Export for My Efficient Elements",
-        page_icon="EfficientElementsLogo.png",
-        layout="wide",
-        initial_sidebar_state="collapsed"
+        page_title=gui_config['title'],
+        page_icon=gui_config['icon'],
+        layout=gui_config['layout'],
+        initial_sidebar_state=gui_config['sidebar_state']
     )
     
     # Custom CSS for better styling
-    st.markdown("""
+    colors = gui_config['colors']
+    st.markdown(f"""
     <style>
-    .main-header {
+    .main-header {{
         text-align: center;
-        color: #2E86C1;
+        color: {colors['primary']};
         margin-bottom: 2rem;
-    }
-    .feature-box {
-        background-color: #2C3E50;
+    }}
+    .feature-box {{
+        background-color: {colors['dark']};
         color: #FFFFFF;
         padding: 1rem;
         border-radius: 0.5rem;
-        border-left: 4px solid #3498DB;
+        border-left: 4px solid {colors['info']};
         margin: 1rem 0;
-    }
-    .success-box {
-        background-color: #27AE60;
+    }}
+    .success-box {{
+        background-color: {colors['success']};
         color: #FFFFFF;
         padding: 1rem;
         border-radius: 0.5rem;
-        border-left: 4px solid #2ECC71;
+        border-left: 4px solid {colors['success']};
         margin: 1rem 0;
-    }
-    .stApp > div:first-child > div:first-child > div:first-child {
+    }}
+    .stApp > div:first-child > div:first-child > div:first-child {{
         padding-top: 2rem;
-    }
-    .block-container {
+    }}
+    .block-container {{
         max-width: 1200px;
         padding-left: 2rem;
         padding-right: 2rem;
-    }
+    }}
     </style>
     """, unsafe_allow_html=True)
     
     # Header with logo - perfectly centered
+    logo_path = get_asset_path("EfficientElementsLogo.png")
     st.markdown(
         f"""
         <div style="display: flex; justify-content: center; align-items: center; margin: 1rem 0;">
-            <img src="data:image/png;base64,{get_base64_of_image('EfficientElementsLogo.png')}" width="150">
+            <img src="data:image/png;base64,{get_base64_of_image(logo_path)}" width="{gui_config['logo_width']}">
         </div>
         """,
         unsafe_allow_html=True
     )
     
     # Title
-    st.markdown('<h1 class="main-header">Export for My Efficient Elements</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; color: #7F8C8D;">Convert your powerpoint deck into importable my elements</p>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="main-header">{app_config["name"]}</h1>', unsafe_allow_html=True)
+    st.markdown(f'<p style="text-align: center; color: {colors["secondary"]};">{app_config["description"]}</p>', unsafe_allow_html=True)
     
     # Main content area - wider layout
     col1, col2, col3 = st.columns([1, 6, 1])
@@ -179,8 +191,8 @@ def main():
         st.markdown("### 📁 Upload PowerPoint File")
         uploaded_file = st.file_uploader(
             "Choose a PowerPoint file",
-            type=['pptx', 'ppt'],
-            help="Upload your PowerPoint presentation (.pptx or .ppt format)"
+            type=app_config['supported_types'],
+            help=f"Upload your PowerPoint presentation ({', '.join([f'.{ext}' for ext in app_config['supported_types']])} format)"
         )
         
         # Folder name input
@@ -203,12 +215,14 @@ def main():
         # Show file info if uploaded
         if uploaded_file is not None:
             st.markdown("### 📋 File Information")
+            file_size_mb = uploaded_file.size / 1024 / 1024
             st.markdown(f"""
             <div class="feature-box">
             <strong>📄 File:</strong> {uploaded_file.name}<br>
-            <strong>📏 Size:</strong> {uploaded_file.size / 1024 / 1024:.1f} MB
+            <strong>📏 Size:</strong> {file_size_mb:.1f} MB
             </div>
             """, unsafe_allow_html=True)
+
 
 def process_powerpoint(uploaded_file, group_name):
     """Process the uploaded PowerPoint file."""
@@ -295,22 +309,23 @@ def process_powerpoint(uploaded_file, group_name):
         except Exception as e:
             progress_bar.progress(0)
             status_text.text("❌ Processing failed!")
-            
-            st.error(f"An error occurred during processing: {str(e)}")
-            
-            # Show detailed error information
-            with st.expander("🔍 Error Details"):
+            st.error(f"Error during processing: {str(e)}")
+            if st.checkbox("Show detailed error information"):
                 st.code(traceback.format_exc())
             
-            # Clean up temp file
+            # Clean up temp file on error
             try:
                 if 'temp_input_path' in locals():
                     os.unlink(temp_input_path)
             except:
                 pass
 
+
 def show_success_result(zip_file_path, group_name):
     """Display success message and provide download link."""
+    
+    gui_config = get_gui_config()
+    colors = gui_config['colors']
     
     st.markdown("---")
     
@@ -361,6 +376,7 @@ def show_success_result(zip_file_path, group_name):
     - Go to My elements in the bottom of left panel and select import button from the bottom
     - Use the downloaded zip file to import these elements
     """)
+
 
 if __name__ == "__main__":
     main()

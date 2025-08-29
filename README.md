@@ -1,319 +1,279 @@
-# PowerPoint Slide Splitter
+# Export for My Efficient Elements
 
-A Python application that takes a PowerPoint file as input and converts each slide into individual .pptx files, each named with a unique UUID.
+A professional Python application that converts PowerPoint presentations into individual slide files with high-quality thumbnails and XML metadata for seamless integration with presentation software.
 
-## Features
+![Logo](assets/EfficientElementsLogo.png)
 
-- ✅ Splits PowerPoint presentations (.pptx, .ppt) into individual slide files
-- ✅ Each output file is named with a unique UUID
-- ✅ Preserves slide content and formatting
-- ✅ **NEW:** Generates high-quality PNG thumbnail images (120px height)
-- ✅ Generates XML metadata file (`MyElements.xml`) with slide information
-- ✅ **NEW:** Creates clean timestamped zip archive and auto-cleanup
-- ✅ **NEW:** User-friendly web GUI with drag-and-drop file upload
-- ✅ Reproducible group UUIDs based on group names
-- ✅ Automatic slide title extraction for meaningful element names
-- ✅ Both web GUI and command-line interfaces available
-- ✅ Customizable output directory and group names
+## ✨ Features
 
-## Installation
+- **🎯 Dual Interface**: Both command-line and web GUI interfaces
+- **📄 Individual Slides**: Each slide becomes a separate PPTX file with unique UUID naming
+- **🖼️ High-Quality Thumbnails**: Professional PNG previews using macOS Quick Look
+- **📋 XML Metadata**: Structured MyElements.xml for easy importing
+- **📦 Clean Packaging**: Everything bundled in timestamped ZIP archives
+- **⚡ Real-Time Progress**: Live progress tracking with detailed status updates
+- **🧹 Automatic Cleanup**: Clean intermediate file handling
+- **⚙️ Configurable**: Centralized configuration system for easy customization
 
-1. Clone or download this repository
-2. Create a virtual environment (recommended):
+## 🏗️ Project Structure
+
+```
+ee_my_elements/
+├── README.md                    # Project documentation
+├── requirements.txt             # Python dependencies
+├── .gitignore                   # Git ignore rules
+├── config/                      # Configuration management
+│   ├── __init__.py
+│   └── settings.py              # Centralized application settings
+├── src/                         # Source code
+│   ├── __init__.py
+│   ├── core/                    # Core business logic
+│   │   ├── __init__.py
+│   │   ├── splitter.py          # Main PowerPointSplitter class
+│   │   ├── thumbnail_generator.py  # High-quality thumbnail generation
+│   │   └── xml_generator.py     # XML metadata creation
+│   ├── gui/                     # Web interface
+│   │   ├── __init__.py
+│   │   └── streamlit_app.py     # Streamlit web application
+│   └── utils/                   # Utility functions
+│       ├── __init__.py
+│       ├── file_utils.py        # File operations and archive creation
+│       └── uuid_utils.py        # UUID generation utilities
+├── assets/                      # Static assets
+│   └── EfficientElementsLogo.png  # Application logo
+├── scripts/                     # Entry point scripts
+│   ├── run_cli.py              # Command-line interface launcher
+│   ├── run_gui.py              # Web GUI launcher
+│   └── verify_install.py       # Installation verification
+└── tests/                       # Test directory (future)
+    └── __init__.py
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Python 3.8+** (Python 3.12+ recommended)
+- **macOS** (required for thumbnail generation via Quick Look)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/skandupmanyu/ee_my_elements.git
+   cd ee_my_elements
+   ```
+
+2. **Create and activate virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On macOS/Linux
+   # or
+   venv\Scripts\activate     # On Windows
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Verify installation:**
+   ```bash
+   python scripts/verify_install.py
+   ```
+
+## 💻 Usage
+
+### Web Interface (Recommended)
+
+Launch the user-friendly web interface:
 
 ```bash
-python -m venv venv
+python scripts/run_gui.py
 ```
 
-3. Activate the virtual environment:
+Then open `http://localhost:8501` in your browser to:
+- Upload PowerPoint files via drag-and-drop
+- Set folder names for organization
+- Watch real-time processing progress
+- Download the final zip archive
 
-**On macOS/Linux:**
-```bash
-source venv/bin/activate
-```
+### Command Line Interface
 
-**On Windows:**
-```bash
-venv\Scripts\activate
-```
-
-4. Install the required dependencies:
+For automation and advanced usage:
 
 ```bash
-pip install -r requirements.txt
+# Basic usage
+python scripts/run_cli.py presentation.pptx
+
+# With custom settings
+python scripts/run_cli.py presentation.pptx \
+  --group-name "My Project" \
+  --output-dir ./output \
+  --verbose
+
+# See all options
+python scripts/run_cli.py --help
 ```
 
-5. To deactivate the virtual environment when done:
+### CLI Options
 
-```bash
-deactivate
+- `input_file`: Path to PowerPoint file (.pptx or .ppt)
+- `-g, --group-name`: Name for XML metadata grouping
+- `-o, --output-dir`: Custom output directory (optional)
+- `-b, --base-name`: Custom base name for zip file
+- `-v, --verbose`: Enable detailed output
+- `--debug`: Show detailed error information
+
+## ⚙️ Configuration
+
+The application uses a centralized configuration system in `config/settings.py`. Key settings include:
+
+### Application Settings
+```python
+APP_NAME = "Export for My Efficient Elements"
+DEFAULT_GROUP_NAME = "My Presentation"
+SUPPORTED_FILE_TYPES = ['pptx', 'ppt']
+MAX_FILE_SIZE_MB = 200
 ```
 
-6. (Optional) Verify the installation:
-
-```bash
-python verify_install.py
+### Thumbnail Settings
+```python
+DEFAULT_THUMBNAIL_HEIGHT = 120
+THUMBNAIL_METHODS = {
+    'macos_quicklook': {'priority': 1, 'timeout': 30},
+    'libreoffice': {'priority': 2, 'timeout': 60},
+    'pil_fallback': {'priority': 3}
+}
 ```
 
-## Usage
-
-You can use this tool in two ways: through a user-friendly web GUI or via command line for automation and debugging.
-
-### 🖥️ Web GUI (Recommended for Most Users)
-
-**Quick Start:**
-```bash
-# First, activate your virtual environment
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate     # On Windows
-
-# Launch the web GUI
-python run_gui.py
+### UI Colors
+```python
+COLORS = {
+    'primary': '#2E86C1',
+    'success': '#27AE60',
+    'warning': '#F39C12',
+    'error': '#E74C3C'
+}
 ```
 
-This will launch a web interface in your browser where you can:
-- 📁 **Drag & drop** your PowerPoint file
-- 🏷️ **Enter a group name** for your slides
-- 🚀 **Click process** and get your zip file automatically
-- 📥 **Download** the result directly
+## 📋 Output Structure
 
-**GUI Features:**
-- ✅ **User-friendly interface** - No command-line knowledge needed
-- ✅ **Real-time progress** - See processing status as it happens
-- ✅ **Automatic downloads** - Get your zip file instantly
-- ✅ **Error handling** - Clear error messages if something goes wrong
-- ✅ **File validation** - Ensures your file is a valid PowerPoint presentation
-- ✅ **Mobile-friendly** - Works on tablets and mobile devices
-- ✅ **Local processing** - Files processed on your machine, not uploaded to servers
+Each processing run creates:
 
-### ⌨️ Command Line (For Automation & Debugging)
+### Individual Files
+- **`{uuid}.pptx`**: Individual slide presentations
+- **`{uuid}.png`**: High-quality thumbnails (120px height)
+- **`MyElements.xml`**: Metadata for importing
 
-**Basic Usage:**
+### Final Archive
+- **`{filename}_{timestamp}.zip`**: Complete package ready for import
 
-First, activate your virtual environment:
-```bash
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate     # On Windows
-```
-
-Then run the splitter:
-```bash
-python pptx_slide_splitter.py presentation.pptx
-```
-
-This will process the slides using a temporary directory and create a clean zip archive next to your input file.
-
-### Specify Output Directory
-
-```bash
-python pptx_slide_splitter.py presentation.pptx -o my_slides/
-```
-
-### Specify Group Name for XML Metadata
-
-```bash
-python pptx_slide_splitter.py presentation.pptx -g "PodHandler"
-```
-
-### Combined Options
-
-```bash
-python pptx_slide_splitter.py presentation.pptx -g "My Custom Group" -o my_slides/ -v
-```
-
-### Help
-
-```bash
-python pptx_slide_splitter.py --help
-```
-
-## Examples
-
-### Split a presentation into individual slides with custom group:
-```bash
-python pptx_slide_splitter.py my_presentation.pptx -g "PodHandler" -v
-```
-
-Output:
-```
-Loading presentation: my_presentation.pptx
-Found 5 slides to process
-Processing slide 1/5
-  → Created thumbnail: a1b2c3d4-e5f6-7890-abcd-ef1234567890.png
-  → Saved as: a1b2c3d4-e5f6-7890-abcd-ef1234567890.pptx
-Processing slide 2/5
-  → Created thumbnail: b2c3d4e5-f6g7-8901-bcde-f23456789012.png
-  → Saved as: b2c3d4e5-f6g7-8901-bcde-f23456789012.pptx
-...
-📄 Created XML metadata: MyElements.xml
-   Group: PodHandler (ID: 7bbf14b3-a82a-568c-a3ef-ab5ad0171dbe)
-   Elements: 5
-
-📦 Creating zip archive...
-    ✅ Compressed 11 files
-    📦 Archive size: 12.3 MB
-    📁 Saved to: /path/to/presentation_20240829_143022.zip
-
-🧹 Cleaning up generated files...
-    ✅ Removed 11 generated files
-    🗑️  Removed temporary directory: pptx_split_abc123
-    📦 Final output: presentation_20240829_143022.zip
-
-🎉 Processing complete!
-⏱️  Total time: 15.6s (3.1s per slide)
-🚀 Performance: 0.3 slides/second
-📈 High-quality thumbnails with accurate visual representation!
-```
-
-### Specify a custom output directory:
-```bash
-python pptx_slide_splitter.py my_presentation.pptx --output-dir ./individual_slides/
-```
-
-## Output
-
-### Individual Slide Files
-Each slide will be saved as a separate .pptx file with a UUID filename format:
-- `a1b2c3d4-e5f6-7890-abcd-ef1234567890.pptx`
-- `b2c3d4e5-f6g7-8901-bcde-f23456789012.pptx`
-- etc.
-
-The UUID ensures each file has a unique name, preventing any conflicts.
-
-### Thumbnail Images (NEW!)
-For each slide, a high-quality PNG thumbnail is generated with the same UUID:
-- `a1b2c3d4-e5f6-7890-abcd-ef1234567890.png`
-- `b2c3d4e5-f6g7-8901-bcde-f23456789012.png`
-- etc.
-
-**Thumbnail Features:**
-- **120px height** with maintained aspect ratio
-- **Pixel-perfect rendering** of slide content
-- **All visual elements preserved** (colors, layouts, shapes, styling)
-- **High quality PNG format** with 95% quality
-
-### Final Output: Clean Zip Archive (NEW!)
-**Location:** Placed next to your original PowerPoint file  
-**Filename:** `your_presentation_YYYYMMDD_HHMMSS.zip`
-
-**Example:**
-```
-/Users/you/Documents/
-├── my_presentation.pptx          ← Your original file
-└── my_presentation_20240829_143022.zip  ← Generated archive
-```
-
-**Archive Contents (Root Level):**
-- **All individual PPTX files** (slide files)
-- **All PNG thumbnails** (one per slide)
-- **XML metadata file** (`MyElements.xml`)
-- **No system files** (excludes .DS_Store, Thumbs.db, etc.)
-- **Root-level structure** (no nested folders inside zip)
-
-**Automatic Cleanup:**
-- ✅ **Temporary files removed** - No clutter left behind
-- ✅ **Single output file** - Just one clean zip archive
-- ✅ **Optimal location** - Zip placed next to original file
-
-**Benefits:**
-- **🎯 Single file output** - Easy to share and manage
-- **🧹 Clean workspace** - No scattered temporary files
-- **📦 Professional packaging** - All content organized in one archive
-- **⚡ Fast access** - Zip placed conveniently next to source file
-- **💾 Efficient storage** - Compressed for optimal file size
-
-### XML Metadata File
-A `MyElements.xml` file is automatically generated with the following structure:
-
+### XML Structure
 ```xml
 <ee4p>
-  <group id="7bbf14b3-a82a-568c-a3ef-ab5ad0171dbe" name="PodHandler">
-    <element name="Unlocking Growth and Loyalty with Personalizati..." thumbMode="1" id="bc893a1b-c4f5-428e-8b2c-a34a5008f3b8"/>
-    <element name="Customer acquisition" thumbMode="1" id="f41bf0a5-9019-4417-ba21-0e6693fda57b"/>
-    <element name="Fabriq deployed to scale personalization and me..." thumbMode="1" id="6f6e2ed1-aa4c-4605-89bc-414fbdb55725"/>
-    ...
+  <group id="{reproducible-uuid}" name="{group-name}">
+    <element name="{slide-title}" thumbMode="1" id="{slide-uuid}"/>
+    <!-- More elements... -->
   </group>
 </ee4p>
 ```
 
-**XML Structure:**
-- **No XML declaration:** File starts directly with the root element (no `<?xml version="1.0" ?>`)
-- **Root element:** `<ee4p>`
-- **Group element:** Contains all slides from the presentation
-  - `id`: Reproducible UUID based on group name (same group name = same UUID)
-  - `name`: The group name you specify (or presentation filename if not specified)
-- **Element elements:** One for each split slide
-  - `name`: Extracted slide title or "Slide X" if no title found
-  - `thumbMode`: Always set to "1"
-  - `id`: Same UUID as the corresponding .pptx filename
+## 🔧 Development
 
-## Supported File Formats
+### Adding New Features
 
-- Input: `.pptx` and `.ppt` files
-- Output: `.pptx` files
+1. **Core Logic**: Add to `src/core/`
+2. **Utilities**: Add to `src/utils/`
+3. **Configuration**: Update `config/settings.py`
+4. **GUI Components**: Modify `src/gui/streamlit_app.py`
 
-## Requirements
+### Testing
 
-- Python 3.6+
-- python-pptx library
-- Pillow (PIL) library for image processing
+```bash
+# Test all imports
+python -c "from src.core.splitter import PowerPointSplitter; print('✅ All imports working')"
 
-## Error Handling
+# Test CLI
+python scripts/run_cli.py --version
 
-The application includes comprehensive error handling for:
-- Missing input files
-- Invalid file formats
-- Permission issues
-- Corrupted PowerPoint files
-- Thumbnail generation failures (uses fallback thumbnails)
+# Test GUI
+python scripts/run_gui.py
+```
 
-## Technical Details
+### Code Organization
 
-The application uses efficient libraries for fast processing:
+- **`config/`**: All configurable settings
+- **`src/core/`**: Business logic (splitting, thumbnails, XML)
+- **`src/utils/`**: Reusable utilities (files, UUIDs)
+- **`src/gui/`**: User interface components
+- **`scripts/`**: Entry points and launchers
 
-**PowerPoint Processing (`python-pptx`):**
-1. Load the source PowerPoint presentation
-2. Iterate through each slide
-3. Create a new presentation for each slide
-4. Copy the slide content while preserving formatting
-5. Save each new presentation with a UUID filename
+## 🎯 Integration with PowerPoint
 
-**High-Quality Thumbnail Generation:**
-1. **macOS Quick Look** for pixel-perfect slide rendering (preferred method)
-2. **LibreOffice fallback** for accurate cross-platform conversion
-3. **Smart method detection** automatically chooses best available option
-4. **Single thumbnail** at 120px height with maintained aspect ratio
-5. **High-quality PNG output** with same UUID as slide
+To import the generated elements:
 
-**XML Metadata:**
-1. Extract slide titles using text analysis
-2. Generate reproducible UUIDs for groups using UUID5
-3. Create structured XML with slide information
+1. **Extract** the downloaded zip file
+2. **Open PowerPoint**
+3. **Click** on Bugs or Icons button to open element wizard
+4. **Navigate** to "My elements" in the bottom of left panel
+5. **Click** import button at the bottom
+6. **Select** the downloaded zip file
 
-**Zip Archive Creation & Cleanup:**
-1. **Temporary directory** - uses system temp directory for intermediate files
-2. **Automatic compression** of all generated files
-3. **Timestamp-based naming** using input filename + YYYYMMDD_HHMMSS format
-4. **Strategic placement** - zip saved next to original PowerPoint file
-5. **Selective inclusion** - only PPTX, PNG, and XML files
-6. **Root-level structure** - files added directly to zip root
-7. **Optimal compression** using ZIP_DEFLATED with compression level 6
-8. **Automatic cleanup** - removes all temporary files and directories after archiving
-9. **Clean workspace** - no intermediate files left behind
+## 🛠️ Troubleshooting
 
-### Quality Benefits:
-- **Pixel-perfect thumbnails** that accurately represent slide content
-- **Automatic method selection** uses best available conversion tool
-- **Preserves visual elements** including colors, layouts, shapes, and styling
-- **Cross-platform compatibility** with graceful fallbacks
-- **Professional output** suitable for production use
+### Common Issues
 
-## License
+**Import Errors:**
+```bash
+# Ensure you're in the project root and virtual environment is active
+source venv/bin/activate
+export PYTHONPATH=$PWD:$PYTHONPATH
+```
 
-This project is open source and available under the MIT License.
+**Thumbnail Quality Issues:**
+- Ensure you're running on macOS for optimal Quick Look integration
+- Check that `qlmanage` command is available in your system
 
-## Contributing
+**File Size Limits:**
+- Default limit: 200MB (configurable in `config/settings.py`)
+- Large files may require more processing time
 
-Feel free to submit issues, feature requests, or pull requests to improve this tool.
+### Performance Tips
+
+- **macOS Quick Look**: Provides fastest, highest-quality thumbnails with no additional setup
+- **Optimized for macOS**: Streamlined codebase with minimal dependencies
+- **Large files**: Enable verbose mode to monitor progress
+
+## 📝 Dependencies
+
+### Core Dependencies
+- **python-pptx**: PowerPoint file manipulation (includes Pillow dependency)
+- **streamlit**: Web interface framework
+
+### System Requirements
+- **macOS Quick Look**: Built-in thumbnail generation (no additional installation required)
+
+**Note**: Pillow is included as a dependency because python-pptx requires it internally, but our thumbnail generation is streamlined to use only macOS Quick Look for optimal quality and performance.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Follow the existing code structure
+4. Update configuration in `config/settings.py` as needed
+5. Test both CLI and GUI interfaces
+6. Submit a pull request
+
+## 📄 License
+
+This project is open source. See the repository for license details.
+
+## 🔗 Links
+
+- **GitHub Repository**: https://github.com/skandupmanyu/ee_my_elements
+- **Issues & Support**: Use GitHub Issues for bug reports and feature requests
+
+---
+
+**Built with ❤️ for seamless PowerPoint element management**
