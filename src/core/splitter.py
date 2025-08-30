@@ -122,7 +122,16 @@ class PowerPointSplitter:
             created_files = []
             slide_metadata = []
             
-            # Process each slide
+            # Optimized bulk thumbnail generation - convert entire presentation to PDF once
+            if self.config['verbose']:
+                print(f"🚀 Using optimized bulk thumbnail generation...")
+            
+            # Generate all thumbnails at once using bulk conversion
+            bulk_thumbnail_paths = self.thumbnail_generator.create_high_quality_thumbnails_bulk(
+                self.input_file, total_slides
+            )
+            
+            # Process each slide with pre-generated thumbnails
             for i, slide in enumerate(presentation.slides, 1):
                 if self.config['verbose']:
                     print(f"Processing slide {i}/{total_slides}...", end=" ")
@@ -145,14 +154,12 @@ class PowerPointSplitter:
                 new_presentation.save(str(output_file))
                 created_files.append(str(output_file))
                 
-                # Report progress - starting thumbnail generation
+                # Report progress - processing thumbnail (already generated)
                 if progress_callback:
                     progress_callback(i, total_slides, slide_name, "creating_thumbnail")
                 
-                # Generate high-quality thumbnail
-                temp_thumbnail_path = self.thumbnail_generator.create_high_quality_thumbnail_from_pptx(
-                    str(output_file), i
-                )
+                # Use pre-generated thumbnail from bulk conversion
+                temp_thumbnail_path = bulk_thumbnail_paths[i-1] if i-1 < len(bulk_thumbnail_paths) else None
                 
                 # Resize and save the final thumbnail
                 if temp_thumbnail_path:
@@ -160,7 +167,17 @@ class PowerPointSplitter:
                     # Clean up the temporary thumbnail
                     self.thumbnail_generator.cleanup_temp_thumbnail(temp_thumbnail_path)
                 else:
-                    thumbnail_path = None
+                    # Fallback to individual generation if bulk failed for this slide
+                    if self.config['verbose']:
+                        print(f"    ⚠️  Using fallback thumbnail generation for slide {i}")
+                    temp_thumbnail_path = self.thumbnail_generator.create_high_quality_thumbnail_from_pptx(
+                        str(output_file), i
+                    )
+                    if temp_thumbnail_path:
+                        thumbnail_path = self._process_and_save_thumbnail(temp_thumbnail_path, file_uuid)
+                        self.thumbnail_generator.cleanup_temp_thumbnail(temp_thumbnail_path)
+                    else:
+                        thumbnail_path = None
                 
                 # Report progress - slide completed
                 if progress_callback:

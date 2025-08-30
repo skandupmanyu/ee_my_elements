@@ -71,6 +71,41 @@ class SlideThumbnailGenerator:
         
         return methods
     
+    def create_high_quality_thumbnails_bulk(self, pptx_path: str, total_slides: int) -> List[Optional[str]]:
+        """
+        Create high-quality thumbnails for all slides using optimized bulk conversion.
+        
+        This method converts the entire presentation to PDF once, then extracts all PNG thumbnails
+        from that single PDF, which is much faster than converting each slide individually.
+        
+        Args:
+            pptx_path: Path to the PPTX file
+            total_slides: Total number of slides in the presentation
+            
+        Returns:
+            List of paths to generated thumbnail files (one per slide), or None for failed slides
+        """
+        if self.config['verbose']:
+            print(f"    🎨 Generating {total_slides} thumbnails using optimized bulk conversion...")
+        
+        # Try bulk PowerPoint to PDF to PNG conversion
+        thumbnail_paths = self._convert_ppt_to_pngs_bulk(pptx_path, total_slides)
+        if thumbnail_paths:
+            if self.config['verbose']:
+                print(f"    ✅ Used bulk PowerPoint to PNG conversion for {len([p for p in thumbnail_paths if p])} thumbnails")
+            return thumbnail_paths
+        
+        # Fallback to individual conversion for each slide
+        if self.config['verbose']:
+            print(f"    ⚠️  Bulk conversion failed, falling back to individual slide conversion...")
+        
+        fallback_thumbnails = []
+        for slide_num in range(1, total_slides + 1):
+            thumbnail_path = self.create_high_quality_thumbnail_from_pptx(pptx_path, slide_num)
+            fallback_thumbnails.append(thumbnail_path)
+        
+        return fallback_thumbnails
+
     def create_high_quality_thumbnail_from_pptx(self, pptx_path: str, slide_number: int) -> Optional[str]:
         """
         Create a high-quality thumbnail from PPTX file using PowerPoint to PDF to PNG conversion.
@@ -109,6 +144,26 @@ class SlideThumbnailGenerator:
             # Step 2: Convert PDF to PNG
             png_path = self._convert_pdf_to_png(pdf_path, slide_number)
             return png_path
+        finally:
+            # Clean up temporary PDF file
+            try:
+                if pdf_path and Path(pdf_path).exists():
+                    Path(pdf_path).unlink()
+            except:
+                pass
+    
+    def _convert_ppt_to_pngs_bulk(self, pptx_path: str, total_slides: int) -> List[Optional[str]]:
+        """Convert PPTX to multiple PNGs using optimized bulk conversion."""
+        
+        # Step 1: Convert entire PPT to single PDF
+        pdf_path = self._convert_ppt_to_pdf(pptx_path)
+        if not pdf_path:
+            return [None] * total_slides
+        
+        try:
+            # Step 2: Convert PDF to multiple PNGs (one per page)
+            png_paths = self._convert_pdf_to_pngs_bulk(pdf_path, total_slides)
+            return png_paths
         finally:
             # Clean up temporary PDF file
             try:
@@ -228,6 +283,105 @@ class SlideThumbnailGenerator:
                 return png_path
         
         return None
+    
+    def _convert_pdf_to_pngs_bulk(self, pdf_path: str, total_slides: int) -> List[Optional[str]]:
+        """Convert PDF to multiple PNGs using the best available method."""
+        
+        # Try pdf2image first (most reliable)
+        if 'pdf2image' in self.conversion_methods:
+            png_paths = self._convert_pdf_to_pngs_bulk_pdf2image(pdf_path, total_slides)
+            if png_paths:
+                return png_paths
+        
+        # Try Poppler as fallback
+        if 'poppler' in self.conversion_methods:
+            png_paths = self._convert_pdf_to_pngs_bulk_poppler(pdf_path, total_slides)
+            if png_paths:
+                return png_paths
+        
+        return [None] * total_slides
+    
+    def _convert_pdf_to_pngs_bulk_pdf2image(self, pdf_path: str, total_slides: int) -> List[Optional[str]]:
+        """Convert PDF to multiple PNGs using pdf2image library."""
+        
+        try:
+            from pdf2image import convert_from_path
+            
+            # Convert all PDF pages to images (300 DPI for high quality)
+            images = convert_from_path(pdf_path, dpi=300, fmt='PNG')
+            
+            if not images:
+                return [None] * total_slides
+            
+            png_paths = []
+            for i, image in enumerate(images):
+                # Create temporary PNG file for each slide
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                    png_path = temp_file.name
+                
+                # Save the image
+                image.save(png_path, 'PNG')
+                png_paths.append(png_path)
+            
+            # Pad with None if we have fewer images than expected slides
+            while len(png_paths) < total_slides:
+                png_paths.append(None)
+            
+            return png_paths[:total_slides]  # Return exactly the number of slides expected
+            
+        except ImportError:
+            # pdf2image not available
+            pass
+        except Exception:
+            # Other errors
+            pass
+        
+        return [None] * total_slides
+    
+    def _convert_pdf_to_pngs_bulk_poppler(self, pdf_path: str, total_slides: int) -> List[Optional[str]]:
+        """Convert PDF to multiple PNGs using Poppler utilities (pdftoppm)."""
+        
+        try:
+            # Create temporary directory for output
+            with tempfile.TemporaryDirectory() as temp_dir:
+                output_prefix = Path(temp_dir) / "slide"
+                
+                # Use pdftoppm to convert all PDF pages to PNG
+                cmd = [
+                    "pdftoppm",
+                    "-png",
+                    "-r", "300",  # 300 DPI resolution
+                    pdf_path,
+                    str(output_prefix)
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                
+                if result.returncode == 0:
+                    # Find generated PNG files (they'll be named slide-01.png, slide-02.png, etc.)
+                    png_files = sorted(list(Path(temp_dir).glob("slide-*.png")))
+                    
+                    png_paths = []
+                    for png_file in png_files:
+                        # Create permanent temporary file
+                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                            png_path = temp_file.name
+                        
+                        # Copy the generated PNG
+                        import shutil
+                        shutil.copy2(png_file, png_path)
+                        png_paths.append(png_path)
+                    
+                    # Pad with None if we have fewer images than expected slides
+                    while len(png_paths) < total_slides:
+                        png_paths.append(None)
+                    
+                    return png_paths[:total_slides]  # Return exactly the number of slides expected
+                        
+        except Exception:
+            pass
+        
+        return [None] * total_slides
     
     def _convert_pdf_to_png_pdf2image(self, pdf_path: str, slide_number: int) -> Optional[str]:
         """Convert PDF to PNG using pdf2image library."""
