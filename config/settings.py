@@ -29,7 +29,7 @@ LOGO_WIDTH = 150  # pixels
 LOGO_CENTER = True
 
 # File processing settings
-DEFAULT_THUMBNAIL_HEIGHT = 500  # pixels for thumbnail generation
+DEFAULT_THUMBNAIL_HEIGHT = 300  # pixels for thumbnail generation
 SUPPORTED_FILE_TYPES = ['pptx', 'ppt']
 MAX_FILE_SIZE_MB = 200
 
