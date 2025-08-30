@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# macOS App Bundle launcher for Export for My Efficient Elements GUI
+# This script opens Terminal and launches the GUI application from anywhere
+
+# Use absolute path to the project directory
+PROJECT_DIR="/Users/upmanyuskand/repos/ee_my_elements"
+
+# Check if the project directory exists
+if [ ! -d "$PROJECT_DIR" ]; then
+    osascript -e 'display dialog "Error: Project directory not found at '"$PROJECT_DIR"'" buttons {"OK"} default button "OK" with icon stop'
+    exit 1
+fi
+
+# Check if the launch script exists
+if [ ! -f "$PROJECT_DIR/launch_gui.sh" ]; then
+    osascript -e 'display dialog "Error: Launch script not found at '"$PROJECT_DIR/launch_gui.sh"'" buttons {"OK"} default button "OK" with icon stop'
+    exit 1
+fi
+
+# Create AppleScript to open Terminal and run the launch script
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "cd '$PROJECT_DIR' && ./launch_gui.sh"
+end tell
+EOF
