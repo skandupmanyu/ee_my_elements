@@ -29,7 +29,7 @@ LOGO_WIDTH = 150  # pixels
 LOGO_CENTER = True
 
 # File processing settings
-DEFAULT_THUMBNAIL_HEIGHT = 120  # pixels for thumbnail generation
+DEFAULT_THUMBNAIL_HEIGHT = 500  # pixels for thumbnail generation
 SUPPORTED_FILE_TYPES = ['pptx', 'ppt']
 MAX_FILE_SIZE_MB = 200
 
@@ -42,16 +42,31 @@ ZIP_TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 PROGRESS_UPDATE_DELAY = 0.2  # seconds between UI updates
 ENABLE_VERBOSE_OUTPUT = True
 
-# Thumbnail generation settings (macOS Quick Look only)
+# Thumbnail generation settings (PowerPoint to PDF to PNG pipeline)
 THUMBNAIL_METHODS = {
-    'macos_quicklook': {
-        'name': 'qlmanage',
+    'powerpoint_applescript': {
+        'name': 'Microsoft PowerPoint via AppleScript',
         'priority': 1,
-        'timeout': 30
+        'timeout': 60
+    },
+    'keynote_applescript': {
+        'name': 'Keynote via AppleScript',
+        'priority': 2,
+        'timeout': 60
+    },
+    'pdf2image': {
+        'name': 'pdf2image library',
+        'priority': 3,
+        'timeout': 60
+    },
+    'poppler': {
+        'name': 'Poppler utilities (pdftoppm)',
+        'priority': 4,
+        'timeout': 60
     },
     'simple_fallback': {
         'name': 'simple_fallback',
-        'priority': 2,
+        'priority': 5,
         'timeout': None
     }
 }

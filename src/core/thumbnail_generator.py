@@ -1,14 +1,17 @@
 """
 Thumbnail generation module for Export for My Efficient Elements.
 
-This module handles thumbnail generation using macOS Quick Look (qlmanage)
-with a simple fallback for cases where Quick Look is not available.
-Optimized for macOS systems with no external dependencies.
+This module handles thumbnail generation using a reliable two-step approach:
+1. PowerPoint to PDF conversion (using Microsoft PowerPoint via AppleScript)
+2. PDF to PNG conversion (using pdf2image library)
+
+This approach provides high-quality, accurate slide thumbnails.
 """
 
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -16,7 +19,7 @@ from config.settings import get_processing_config
 
 
 class SlideThumbnailGenerator:
-    """Streamlined thumbnail generator optimized for macOS Quick Look."""
+    """High-quality thumbnail generator using PowerPoint to PDF to PNG conversion."""
     
     def __init__(self):
         self.config = get_processing_config()
@@ -30,11 +33,36 @@ class SlideThumbnailGenerator:
         """Detect which conversion methods are available on this system."""
         methods = []
         
-        # Check for macOS Quick Look (qlmanage)
+        # Check for Microsoft PowerPoint (AppleScript method)
         try:
-            result = subprocess.run(['qlmanage', '-h'], capture_output=True, timeout=3)
+            result = subprocess.run(['osascript', '-e', 'tell application "Microsoft PowerPoint" to get version'], 
+                                  capture_output=True, timeout=5)
             if result.returncode == 0:
-                methods.append('qlmanage')
+                methods.append('powerpoint_applescript')
+        except:
+            pass
+        
+        # Check for Keynote (AppleScript method)
+        try:
+            result = subprocess.run(['osascript', '-e', 'tell application "Keynote" to get version'], 
+                                  capture_output=True, timeout=5)
+            if result.returncode == 0:
+                methods.append('keynote_applescript')
+        except:
+            pass
+        
+        # Check for pdf2image library
+        try:
+            from pdf2image import convert_from_path
+            methods.append('pdf2image')
+        except ImportError:
+            pass
+        
+        # Check for Poppler (pdftoppm)
+        try:
+            result = subprocess.run(['pdftoppm', '-h'], capture_output=True, timeout=3)
+            if result.returncode == 0:
+                methods.append('poppler')
         except:
             pass
         
@@ -45,7 +73,7 @@ class SlideThumbnailGenerator:
     
     def create_high_quality_thumbnail_from_pptx(self, pptx_path: str, slide_number: int) -> Optional[str]:
         """
-        Create a high-quality thumbnail from PPTX file using macOS Quick Look.
+        Create a high-quality thumbnail from PPTX file using PowerPoint to PDF to PNG conversion.
         
         Args:
             pptx_path: Path to the PPTX file
@@ -55,59 +83,221 @@ class SlideThumbnailGenerator:
             Path to the generated thumbnail file, or None if failed
         """
         if self.config['verbose']:
-            print(f"    🎨 Generating high-quality thumbnail using macOS Quick Look...")
+            print(f"    🎨 Generating high-quality thumbnail using PowerPoint to PNG conversion...")
         
-        # Try qlmanage first (primary method)
-        if 'qlmanage' in self.conversion_methods:
-            thumbnail_path = self._convert_with_qlmanage(pptx_path)
-            if thumbnail_path:
-                if self.config['verbose']:
-                    print(f"    ✅ Used macOS Quick Look for high-quality conversion")
-                return thumbnail_path
+        # Try PowerPoint to PDF to PNG conversion
+        thumbnail_path = self._convert_ppt_to_png(pptx_path, slide_number)
+        if thumbnail_path:
+            if self.config['verbose']:
+                print(f"    ✅ Used PowerPoint to PNG conversion for high-quality thumbnail")
+            return thumbnail_path
         
         # Fallback to simple placeholder
         if self.config['verbose']:
             print(f"    ℹ️  Using simple fallback thumbnail")
         return self._create_simple_fallback_thumbnail(pptx_path, slide_number)
     
-    def _convert_with_qlmanage(self, pptx_path: str) -> Optional[str]:
-        """Convert PPTX to image using macOS Quick Look."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Use qlmanage to generate thumbnail
-            cmd = [
-                'qlmanage', 
-                '-t', str(pptx_path),
-                '-s', '1440',  # Size for high quality
-                '-o', temp_dir
-            ]
-            
+    def _convert_ppt_to_png(self, pptx_path: str, slide_number: int) -> Optional[str]:
+        """Convert PPTX to PNG using PowerPoint to PDF to PNG pipeline."""
+        
+        # Step 1: Convert PPT to PDF
+        pdf_path = self._convert_ppt_to_pdf(pptx_path)
+        if not pdf_path:
+            return None
+        
+        try:
+            # Step 2: Convert PDF to PNG
+            png_path = self._convert_pdf_to_png(pdf_path, slide_number)
+            return png_path
+        finally:
+            # Clean up temporary PDF file
             try:
-                timeout = self.config['thumbnail_methods']['macos_quicklook']['timeout']
-                result = subprocess.run(cmd, capture_output=True, timeout=timeout)
+                if pdf_path and Path(pdf_path).exists():
+                    Path(pdf_path).unlink()
+            except:
+                pass
+    
+    def _convert_ppt_to_pdf(self, pptx_path: str) -> Optional[str]:
+        """Convert PowerPoint to PDF using the best available method."""
+        
+        # Try Microsoft PowerPoint via AppleScript first
+        if 'powerpoint_applescript' in self.conversion_methods:
+            pdf_path = self._convert_ppt_to_pdf_applescript_powerpoint(pptx_path)
+            if pdf_path:
+                return pdf_path
+        
+        # Try Keynote via AppleScript as fallback
+        if 'keynote_applescript' in self.conversion_methods:
+            pdf_path = self._convert_ppt_to_pdf_applescript_keynote(pptx_path)
+            if pdf_path:
+                return pdf_path
+        
+        return None
+    
+    def _convert_ppt_to_pdf_applescript_powerpoint(self, pptx_path: str) -> Optional[str]:
+        """Convert PowerPoint to PDF using Microsoft PowerPoint via AppleScript."""
+        
+        try:
+            # Create temporary PDF file
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                pdf_path = temp_file.name
+            
+            # AppleScript to convert PPT to PDF using PowerPoint
+            applescript = f'''
+            tell application "Microsoft PowerPoint"
+                open POSIX file "{pptx_path}"
+                set thePresentation to active presentation
+                save thePresentation in POSIX file "{pdf_path}" as save as PDF
+                close thePresentation
+            end tell
+            '''
+            
+            # Run AppleScript
+            result = subprocess.run(
+                ["osascript", "-e", applescript],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0 and Path(pdf_path).exists():
+                return pdf_path
+            else:
+                # Clean up failed attempt
+                try:
+                    Path(pdf_path).unlink()
+                except:
+                    pass
+                return None
+                
+        except Exception:
+            return None
+    
+    def _convert_ppt_to_pdf_applescript_keynote(self, pptx_path: str) -> Optional[str]:
+        """Convert PowerPoint to PDF using Keynote via AppleScript."""
+        
+        try:
+            # Create temporary PDF file
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                pdf_path = temp_file.name
+            
+            # AppleScript to convert PPT to PDF using Keynote
+            applescript = f'''
+            tell application "Keynote"
+                open POSIX file "{pptx_path}"
+                set thePresentation to front document
+                export thePresentation to file "{pdf_path}" as PDF
+                close thePresentation
+            end tell
+            '''
+            
+            # Run AppleScript
+            result = subprocess.run(
+                ["osascript", "-e", applescript],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0 and Path(pdf_path).exists():
+                return pdf_path
+            else:
+                # Clean up failed attempt
+                try:
+                    Path(pdf_path).unlink()
+                except:
+                    pass
+                return None
+                
+        except Exception:
+            return None
+    
+    def _convert_pdf_to_png(self, pdf_path: str, slide_number: int) -> Optional[str]:
+        """Convert PDF to PNG using the best available method."""
+        
+        # Try pdf2image first (most reliable)
+        if 'pdf2image' in self.conversion_methods:
+            png_path = self._convert_pdf_to_png_pdf2image(pdf_path, slide_number)
+            if png_path:
+                return png_path
+        
+        # Try Poppler as fallback
+        if 'poppler' in self.conversion_methods:
+            png_path = self._convert_pdf_to_png_poppler(pdf_path, slide_number)
+            if png_path:
+                return png_path
+        
+        return None
+    
+    def _convert_pdf_to_png_pdf2image(self, pdf_path: str, slide_number: int) -> Optional[str]:
+        """Convert PDF to PNG using pdf2image library."""
+        
+        try:
+            from pdf2image import convert_from_path
+            
+            # Convert PDF pages to images (300 DPI for high quality)
+            images = convert_from_path(pdf_path, dpi=300, fmt='PNG')
+            
+            if images:
+                # Get the first page (single slide presentation)
+                image = images[0]
+                
+                # Create temporary PNG file
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                    png_path = temp_file.name
+                
+                # Save the image
+                image.save(png_path, 'PNG')
+                return png_path
+            
+        except ImportError:
+            # pdf2image not available
+            pass
+        except Exception:
+            # Other errors
+            pass
+        
+        return None
+    
+    def _convert_pdf_to_png_poppler(self, pdf_path: str, slide_number: int) -> Optional[str]:
+        """Convert PDF to PNG using Poppler utilities (pdftoppm)."""
+        
+        try:
+            # Create temporary directory for output
+            with tempfile.TemporaryDirectory() as temp_dir:
+                output_prefix = Path(temp_dir) / "slide"
+                
+                # Use pdftoppm to convert PDF to PNG
+                cmd = [
+                    "pdftoppm",
+                    "-png",
+                    "-r", "300",  # 300 DPI resolution
+                    "-singlefile",  # Single file output
+                    pdf_path,
+                    str(output_prefix)
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
                 
                 if result.returncode == 0:
-                    # qlmanage creates files with specific naming
-                    generated_files = list(Path(temp_dir).glob("*.png"))
-                    if generated_files:
-                        # Move the generated file to a permanent location
-                        source_file = generated_files[0]
-                        # Create a temporary file for the thumbnail
+                    # Find generated PNG file
+                    png_files = list(Path(temp_dir).glob("*.png"))
+                    if png_files:
+                        source_file = png_files[0]
+                        
+                        # Create permanent temporary file
                         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
-                            temp_thumbnail_path = temp_file.name
+                            png_path = temp_file.name
                         
-                        # Copy the generated thumbnail
+                        # Copy the generated PNG
                         import shutil
-                        shutil.copy2(source_file, temp_thumbnail_path)
-                        return temp_thumbnail_path
+                        shutil.copy2(source_file, png_path)
+                        return png_path
                         
-            except subprocess.TimeoutExpired:
-                if self.config['verbose']:
-                    print(f"    ⚠️  qlmanage conversion timed out")
-            except Exception as e:
-                if self.config['verbose']:
-                    print(f"    ⚠️  qlmanage conversion failed: {e}")
-            
-            return None
+        except Exception:
+            pass
+        
+        return None
     
     def _create_simple_fallback_thumbnail(self, pptx_path: str, slide_number: int) -> str:
         """
